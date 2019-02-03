@@ -12,11 +12,16 @@
 target/
 
 #eclipse ignore
+target/
+
+#eclipse ignore
+
 .settings/
 .project
-.classpath
+.classpatch
 
 #idea
+
 .idea/
 /idea/
 *.ipr
@@ -24,11 +29,13 @@ target/
 *.iws
 
 #temp file
+
 *.log
 *.cache
+*.diff
 *.patch
 *.tmp
 
-#system
+#system ignore
 .DS_Store
 Thumbs.db
