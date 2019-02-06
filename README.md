@@ -60,7 +60,7 @@
 - 其他： 
     - 双重检测锁式（由于JVM底层内部模型原因，偶尔会出问题。不建议使用） 
     - 静态内部类式(线程安全，调用效率高。 但是，可以延时加载) 
-    - 枚举单例(线程安全，调用效率高，不能延时加载)
+    - 枚举单例(线程安全，调用效率高，不能延时加载,可以天然方式反射和反序列化的漏洞)
 ### 饿汉式
 
 **特点：** 线程安全，调用效率高。 但是，不能延时加载。
@@ -111,10 +111,89 @@ public class Singleton02 {
 
 
 ### 双重检测锁式
+懒汉式是对方法进行同步,如果此方法被调用的时候就必须等待.这样效率比较地底.而双重检测锁式将同步内容下放到if内部，提高了执行的效率,不必每次获取对象时都进行同步，只有第一次才同步创建了以后就没必要了。
+```
+public class Singleton03 {
+
+    private static Singleton03 instance = null;
+
+    public static Singleton03 getInstance()
+    {
+        if (instance == null) {
+            Singleton03 sc;
+            synchronized (Singleton03.class)
+            {
+                sc = instance;
+                if (sc == null) {
+                    synchronized (Singleton03.class) {
+                        if(sc == null) {
+                            sc = new Singleton03();
+                        }
+                    }
+                    instance = sc;
+                }
+            }
+        }
+        return instance;
+    }
+    private Singleton03() {
+
+    }
+}
+```
+**优点:**  即提高了效率,也可以延时加载.但是不建议使用,偶尔会出问题.
+
+**问题:** 由于编译器优化原因和JVM底层内部模型原因， 偶尔会出问题。不建议使用。
 
 
 ### 静态内部类式
+静态内部类模式是线程安全的,并且可以延时加载,调用效率高.兼备了并发高效调用和延迟加载的优势！
+```
+public class Singleton04 {
 
+    /* 内部类加载的时候是天然的线程安全 */
+    private static class SingletonInnerClass{
+        /* instance是 static final 类型，保证了内存中只有这样一个实例存在，而且只能被赋值一次，从而保证了线程安全性.  */
+        private static final Singleton04 instance = new Singleton04();
+    }
+
+    /* 外部类没有static属性，则不会像饿汉式那样立即加载对象。  */
+    public static Singleton04 getInstance () {
+        return SingletonInnerClass.instance;
+    }
+
+    private Singleton04(){
+
+    }
+
+}
+```
+- 外部类没有static属性，则不会像饿汉式那样立即加载对象。 
+-  只有真正调用getInstance(),才会加载静态内部类。加载类时是线程安全的。 
+- instance是static final 类型，保证了内存中只有这样一个实例存在，而且只能被赋值一次，从而保证了线程安全性. 
+- 兼备了并发高效调用和延迟加载的优势！
 
 ### 枚举单例
+枚举本身就是单例模式。由JVM从根本上提供保障！避免通过反射和反序列化的漏洞,但是不能延时加载.
+```
+public enum Singleton05 {
 
+    /* 定义一个枚举的元素，它就代表了Singleton的一个实例 */
+    INSTANCE;
+
+    /* 单例可以有自己的操作 */
+    public void singletonOperation(){
+        //功能处理
+    }
+}
+```
+
+### 如何选用?
+- 单例对象  占用资源少，不需要延时加载
+    - 枚举式好于饿汉式 
+- 单例对象占用资源大，需要延时加载
+    - 静态内部类式好于懒汉式
+
+### 问题
+- 反射可以破解上面四种实现方式，不包含枚举式。可以在构造方法中手动 抛出异常控制
+- 反序列化可以破解上面几种((不包含枚举式))实现方式,可以通过定义readResolve()防止获得不同对象。反序列化时，如果对象所在类定义了readResolve()，（实际是一种回调）， 定义返回哪个对象。 
